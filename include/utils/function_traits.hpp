@@ -21,27 +21,15 @@
 
 #include <tuple>
 #include <type_traits>
+#include <functional>
 
 namespace traits
 {
 
-enum FunctionType
+/// For generic types that are functors, delegate to its operator().
+template <typename T>
+struct function_traits : public function_traits<decltype(&T::operator())>
 {
-    /// Specifies an invalid function.
-    Invalid = -1,
-    /// The callable is a function.
-    Function,
-    /// The callable is a functor.
-    Functor,
-    /// The callable is a method.
-    Method
-};
-
-/// Traits for functors and function objects.
-template <typename Function>
-struct function_traits : public function_traits<decltype(&Function::operator())>
-{
-    static constexpr int type = FunctionType::Functor;
 };
 
 /// Method traits.
@@ -50,17 +38,18 @@ struct function_traits<TRet(TObject::*)(Args...)>
 {
     using object = TObject;
     using return_type = TRet;
+    using arg_types = std::tuple<Args...>;
     typedef TRet(TObject::*function_type)(Args...);
 
     static constexpr std::size_t arity = sizeof... (Args);
     static constexpr bool is_const = false;
-    static constexpr int type = FunctionType::Method;
 
     template <std::size_t N>
     struct argument
     {
         static_assert(N < arity, "error: invalid parameter index.");
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+
     };
 
     template <typename... TestArgs>
@@ -73,11 +62,11 @@ struct function_traits<TRet(TObject::*)(Args...) const>
 {
     using object = TObject;
     using return_type = TRet;
+    using arg_types = std::tuple<Args...>;
     typedef TRet(TObject::*function_type)(Args...) const;
 
     static constexpr std::size_t arity = sizeof... (Args);
     static constexpr bool is_const = true;
-    static constexpr int type = FunctionType::Method;
 
     template <std::size_t N>
     struct argument
@@ -95,11 +84,11 @@ template <typename TRet, typename... Args>
 struct function_traits<TRet(*)(Args...)>
 {
     using return_type = TRet;
+    using arg_types = std::tuple<Args...>;
     typedef TRet(*function_type)(Args...);
 
     static constexpr std::size_t arity = sizeof... (Args);
     static constexpr bool is_const = false;
-    static constexpr int type = FunctionType::Function;
 
     template <std::size_t N>
     struct argument
@@ -110,6 +99,12 @@ struct function_traits<TRet(*)(Args...)>
 
     template <typename... TestArgs>
     static constexpr bool is_same_args = std::is_same_v<std::tuple<Args...>, std::tuple<TestArgs...>>;
+};
+
+template <typename Function, typename ArgType, std::size_t N>
+struct is_same_arg
+{
+    static constexpr bool value = std::is_same_v<typename function_traits<Function>::template argument<N>::type, ArgType>;
 };
 
 } // namespace traits

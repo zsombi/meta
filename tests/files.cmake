@@ -4,6 +4,7 @@ test_argument_type.cpp
 test_log.cpp
 test_main.cpp
 test_meta_class.cpp
+test_signals.cpp
 test_thread_pool.cpp
 test_log_fixtures.hpp
 test_utils.hpp

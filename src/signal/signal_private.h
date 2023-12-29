@@ -16,28 +16,21 @@
  * <http://www.gnu.org/licenses/>
  */
 
+#ifndef META_SIGNAL_PRIVATE_HPP
+#define META_SIGNAL_PRIVATE_HPP
+
+#include <meta/signal/signal.hpp>
+#include <meta/signal/slot.hpp>
+
 namespace meta
 {
 
-template<class Function>
-Callable::Callable(std::string_view name, Function function)
+struct SlotPrivate
 {
-    auto invokable = [f = std::move(function)](const PackagedArguments& arguments) -> ArgumentData
-    {
-        auto pack = arguments.toTuple<Function>();
-        if constexpr (std::is_void_v<typename traits::function_traits<Function>::return_type>)
-        {
-            std::apply(f, pack);
-            return ArgumentData();
-        }
-        else
-        {
-            auto result = std::apply(f, pack);
-            return ArgumentData(result);
-        }
-    };
-    m_descriptor.invokable = std::move(invokable);
-    m_descriptor.name = name;
-}
+    static void attachToSignal(Slot& self, CoreSignal& signal);
+    static void detachFromSignal(Slot& self);
+};
 
 }
+
+#endif
