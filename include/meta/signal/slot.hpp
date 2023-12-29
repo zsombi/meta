@@ -27,22 +27,21 @@
 namespace meta
 {
 
-class BaseSignal;
-class Connection;
+class CoreSignal;
+class Slot;
 
-/// The class represents a connection to a signal. The connection is a token which holds the
-/// signal connected, and the function, method, metamethod, functor or lambda the signal is
-/// connected to. This function is called slot.
-class META_API Connection : protected Callable
+/// %Slot represents a connection to a signal. A slot is a token which holds the signal connected,
+/// and the function, method, metamethod, functor or lambda the signal is connected to.
+class META_API Slot : protected Callable
 {
-    friend struct ConnectionPrivate;
+    friend struct SlotPrivate;
 
 public:
-    /// Constructor. Creates a connection to an object and its method slot.
+    /// Constructor. Creates a slot with an object and its method.
     /// \param object The object of the slot.
-    /// \param function The function
+    /// \param function The method.
     template <class Class, class Function>
-    explicit Connection(Class& object, Function function) :
+    explicit Slot(Class& object, Function function) :
         Callable("object_slot", function),
         m_object(static_cast<typename traits::function_traits<Function>::object*>(&object))
     {
@@ -51,51 +50,54 @@ public:
                       "Object differs from the function");
         if constexpr (traits::function_traits<Function>::arity > 0u)
         {
-            m_passConnection = traits::is_same_arg<Function, Connection*, 0u>::value;
+            m_passConnection = traits::is_same_arg<Function, Slot*, 0u>::value;
         }
     }
 
-    /// Constructor. Creates a connection to a function slot.
-    /// \param function The function
+    /// Constructor. Creates a slot with a function, or a lambda.
+    /// \param function The function of the slot.
     template <class Function>
-    explicit Connection(Function function) :
-        Callable("function_slot", function)
+    explicit Slot(Function function) :
+        Callable("function_slot", std::move(function))
     {
         if constexpr (traits::function_traits<Function>::arity > 0u)
         {
-            m_passConnection = traits::is_same_arg<Function, Connection*, 0u>::value;
+            m_passConnection = traits::is_same_arg<Function, Slot*, 0u>::value;
         }
     }
 
-    Connection(Connection&& other);
-    Connection& operator=(Connection&& other);
-    void swap(Connection& other);
+    /// Move.
+    Slot(Slot&& other);
+    Slot& operator=(Slot&& other);
+    void swap(Slot& other);
 
-    /// Returns the state of the connection.
-    /// \return If the connection is connected, \e true, otherwise \e false.
+    /// Returns the state of the slot.
+    /// \return If the slot is connected, \e true, otherwise \e false.
     bool isConnected() const
     {
         return m_signal != nullptr;
     }
 
-    /// The signal of the connection.
-    BaseSignal* getSignal() const
+    /// The signal of the slot. A slot has a signal when it is connected to that signal.
+    /// \return The signal to which the slot is connected, or \e nullptr if the slot is not connected.
+    CoreSignal* getSignal() const
     {
         return m_signal;
     }
 
-    /// Disconnects the connection from the connected signal.
-    /// \return If the connection
+    /// Disconnects the slot from the signal.
+    /// \return If the slot was connected, returns \e true, otherwise \e false.
     bool disconnect();
 
-    /// Activates the connection by calling the slot of the connection.
+    /// Activates the slot by calling the function or the method of the slot.
     /// \param args The arguments to pass to the slot.
     bool activate(const PackagedArguments& arguments);
 
 private:
+    /// The object of the slot, if the slot is a method of an object.
     ArgumentData m_object;
-    /// The signal the connection is attached to.
-    BaseSignal* m_signal = nullptr;
+    /// The signal to which the slot is connected.
+    CoreSignal* m_signal = nullptr;
     /// If the slot's first argument is the connection object itself.
     bool m_passConnection = false;
 };

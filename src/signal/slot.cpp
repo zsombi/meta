@@ -16,7 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <meta/signal/connection.hpp>
+#include <meta/signal/slot.hpp>
 #include <meta/signal/signal.hpp>
 #include "signal_private.h"
 #include <assert.hpp>
@@ -24,34 +24,34 @@
 namespace meta
 {
 
-void ConnectionPrivate::attachToSignal(Connection& self, BaseSignal& signal)
+void SlotPrivate::attachToSignal(Slot& self, CoreSignal& signal)
 {
     abortIfFail(!self.m_signal);
 
     self.m_signal = &signal;
 }
 
-void ConnectionPrivate::detachFromSignal(Connection& self)
+void SlotPrivate::detachFromSignal(Slot& self)
 {
     abortIfFail(self.m_signal);
     self.m_signal = nullptr;
 }
 
-Connection::Connection(Connection&& other) :
-    Callable(std::forward<Connection>(other)),
+Slot::Slot(Slot&& other) :
+    Callable(std::forward<Slot>(other)),
     m_object(std::move(other.m_object)),
     m_signal(std::move(other.m_signal)),
     m_passConnection(std::move(other.m_passConnection))
 {
 }
-Connection& Connection::operator=(Connection&& other)
+Slot& Slot::operator=(Slot&& other)
 {
-    Connection tmp(std::forward<Connection>(other));
+    Slot tmp(std::forward<Slot>(other));
     swap(tmp);
     return *this;
 }
 
-void Connection::swap(Connection& other)
+void Slot::swap(Slot& other)
 {
     Callable::swap(other);
     m_object.swap(other.m_object);
@@ -59,7 +59,7 @@ void Connection::swap(Connection& other)
     std::swap(m_passConnection, other.m_passConnection);
 }
 
-bool Connection::disconnect()
+bool Slot::disconnect()
 {
     if (!m_signal)
     {
@@ -69,7 +69,7 @@ bool Connection::disconnect()
     return true;
 }
 
-bool Connection::activate(const PackagedArguments& arguments)
+bool Slot::activate(const PackagedArguments& arguments)
 {
     auto repacked = PackagedArguments();
 

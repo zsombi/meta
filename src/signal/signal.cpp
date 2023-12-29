@@ -16,7 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <meta/signal/connection.hpp>
+#include <meta/signal/slot.hpp>
 #include <meta/signal/signal.hpp>
 #include <utils/scope_value.hpp>
 #include "signal_private.h"
@@ -26,19 +26,19 @@ namespace meta
 {
 
 
-bool BaseSignal::isValid() const
+bool CoreSignal::isValid() const
 {
     return true;
 }
 
-int BaseSignal::activateConnections(const PackagedArguments& arguments)
+int CoreSignal::activateSlots(const PackagedArguments& arguments)
 {
     auto result = 0;
 
     {
         utils::ScopeValue<bool> emitGuard(m_emitting, true);
-        auto last = m_connections.end();
-        for (auto it = m_connections.begin(); it != last; ++it)
+        auto last = m_slots.end();
+        for (auto it = m_slots.begin(); it != last; ++it)
         {
             if ((*it)->getSignal() != this)
             {
@@ -53,33 +53,34 @@ int BaseSignal::activateConnections(const PackagedArguments& arguments)
     }
 
     // Compact disconnected connections.
-    std::erase(m_connections, ConnectionPtr());
+    std::erase(m_slots, SlotPtr());
 
     return result;
 }
 
-int BaseSignal::emit(const PackagedArguments& arguments)
+int CoreSignal::emit(const PackagedArguments& arguments)
 {
     if (!verifySignature(arguments))
     {
         return -1;
     }
 
-    return activateConnections(arguments);
+    return activateSlots(arguments);
 }
 
-void BaseSignal::connect(ConnectionPtr connection)
+Slot* CoreSignal::connect(SlotPtr connection)
 {
     abortIfFail(connection && !connection->isConnected());
-    ConnectionPrivate::attachToSignal(*connection, *this);
-    m_connections.push_back(std::move(connection));
+    SlotPrivate::attachToSignal(*connection, *this);
+    m_slots.push_back(std::move(connection));
+    return m_slots.back().get();
 }
 
-void BaseSignal::disconnect(Connection& connection)
+void CoreSignal::disconnect(Slot& connection)
 {
     abortIfFail(connection.getSignal() == this);
 
-    ConnectionPrivate::detachFromSignal(connection);
+    SlotPrivate::detachFromSignal(connection);
 
     if (m_emitting)
     {
@@ -87,22 +88,22 @@ void BaseSignal::disconnect(Connection& connection)
         {
             return &connection == item.get();
         };
-        auto it = std::find_if(m_connections.begin(), m_connections.end(), predicate);
+        auto it = std::find_if(m_slots.begin(), m_slots.end(), predicate);
         it->reset();
     }
     else
     {
         // Compact disconnected connections.
-        std::erase(m_connections, ConnectionPtr());
+        std::erase(m_slots, SlotPtr());
     }
 }
 
-std::size_t BaseSignal::getConnectionCount() const
+std::size_t CoreSignal::getConnectionCount() const
 {
     if (m_emitting)
     {
         auto result = std::size_t(0u);
-        for (auto& connection : m_connections)
+        for (auto& connection : m_slots)
         {
             if (connection->isConnected())
             {
@@ -112,7 +113,7 @@ std::size_t BaseSignal::getConnectionCount() const
         return result;
     }
 
-    return m_connections.size();
+    return m_slots.size();
 }
 
 }

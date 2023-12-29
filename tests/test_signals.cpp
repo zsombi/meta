@@ -21,7 +21,7 @@
 
 #include <meta/meta.hpp>
 #include <meta/signal/signal.hpp>
-#include <meta/signal/connection.hpp>
+#include <meta/signal/slot.hpp>
 
 namespace
 {
@@ -55,7 +55,11 @@ public:
     {
         META_LOG_INFO(__FUNCTION__);
     }
-    void selfDisconnect(meta::Connection* connection)
+    void stringSlot(std::string_view text)
+    {
+        META_LOG_INFO(__FUNCTION__ << " " << text);
+    }
+    void selfDisconnect(meta::Slot* connection)
     {
         META_LOG_INFO(__FUNCTION__);
         connection->disconnect();
@@ -66,6 +70,11 @@ public:
         META_LOG_INFO("SignalTests::" << __FUNCTION__);
     }
 };
+
+void stringFunction(std::string_view text)
+{
+    META_LOG_INFO(__FUNCTION__ << " " << text);
+}
 
 }
 
@@ -82,7 +91,7 @@ TEST_F(SignalTests, emitWithConnectionToLambda)
     {
         META_LOG_INFO("lambda");
     };
-    auto connection = std::make_unique<meta::Connection>(lambda);
+    auto connection = std::make_unique<meta::Slot>(lambda);
     voidSignal.connect(std::move(connection));
     EXPECT_CALL(*m_mockPrinter, log("lambda"));
     EXPECT_EQ(1u, voidSignal.emit());
@@ -95,13 +104,13 @@ TEST_F(SignalTests, emitSignalWithArnumentsWithConnectionToLambdas)
     {
         META_LOG_INFO("lambda1");
     };
-    auto connection1 = std::make_unique<meta::Connection>(lambda1);
+    auto connection1 = std::make_unique<meta::Slot>(lambda1);
     voidSignal.connect(std::move(connection1));
     auto lambda2 = [](int value)
     {
         META_LOG_INFO("lambda2 " << value);
     };
-    auto connection2 = std::make_unique<meta::Connection>(lambda2);
+    auto connection2 = std::make_unique<meta::Slot>(lambda2);
     voidSignal.connect(std::move(connection2));
 
     EXPECT_CALL(*m_mockPrinter, log("lambda1"));
@@ -112,12 +121,12 @@ TEST_F(SignalTests, emitSignalWithArnumentsWithConnectionToLambdas)
 TEST_F(SignalTests, emitWithConnectionToLambdaWithConnectionAsArgument)
 {
     meta::Signal<void()> voidSignal{"voidSignal"};
-    auto lambda = [](meta::Connection* connection)
+    auto lambda = [](meta::Slot* connection)
     {
         META_LOG_INFO("lambda");
         connection->disconnect();
     };
-    auto connection = std::make_unique<meta::Connection>(lambda);
+    auto connection = std::make_unique<meta::Slot>(lambda);
     voidSignal.connect(std::move(connection));
     EXPECT_CALL(*m_mockPrinter, log("lambda"));
     EXPECT_EQ(1u, voidSignal.getConnectionCount());
@@ -134,12 +143,12 @@ TEST_F(SignalTests, emitNoArgSignalWithArguments)
 TEST_F(SignalTests, emitArgSignalWithDifferentArgument)
 {
     meta::Signal<void(std::string)> signal{"stringSignal"};
-    auto slot = [](meta::Connection* connection)
+    auto slot = [](meta::Slot* connection)
     {
         META_LOG_INFO("lambda");
         connection->disconnect();
     };
-    auto connection = std::make_unique<meta::Connection>(slot);
+    auto connection = std::make_unique<meta::Slot>(slot);
     signal.connect(std::move(connection));
 
     EXPECT_EQ(-1, signal.emit(meta::PackagedArguments(10)));
@@ -148,12 +157,12 @@ TEST_F(SignalTests, emitArgSignalWithDifferentArgument)
 TEST_F(SignalTests, emitArgSignalWithMoreArguments)
 {
     meta::Signal<void(std::string)> signal{"stringSignal"};
-    auto slot = [](meta::Connection* connection)
+    auto slot = [](meta::Slot* connection)
     {
         META_LOG_INFO("lambda");
         connection->disconnect();
     };
-    auto connection = std::make_unique<meta::Connection>(slot);
+    auto connection = std::make_unique<meta::Slot>(slot);
     signal.connect(std::move(connection));
     EXPECT_CALL(*m_mockPrinter, log("lambda"));
     EXPECT_EQ(1, signal.emit(meta::PackagedArguments(std::string("first"), 10)));
@@ -162,12 +171,12 @@ TEST_F(SignalTests, emitArgSignalWithMoreArguments)
 TEST_F(SignalTests, emitArgSignalWithOperator)
 {
     meta::Signal<void(std::string_view)> signal{"stringSignal"};
-    auto slot = [](meta::Connection* connection, std::string_view arg)
+    auto slot = [](meta::Slot* connection, std::string_view arg)
     {
         META_LOG_INFO("lambda: " << arg);
         connection->disconnect();
     };
-    auto connection = std::make_unique<meta::Connection>(slot);
+    auto connection = std::make_unique<meta::Slot>(slot);
     signal.connect(std::move(connection));
     EXPECT_CALL(*m_mockPrinter, log("lambda: first"));
     EXPECT_EQ(1, signal("first"));
@@ -176,7 +185,7 @@ TEST_F(SignalTests, emitArgSignalWithOperator)
 TEST_F(SignalTests, connectToMethodSlot)
 {
     meta::Signal<void()> signal("voidSignal");
-    auto connection = std::make_unique<meta::Connection>(*this, &SignalTests::voidSlot);
+    auto connection = std::make_unique<meta::Slot>(*this, &SignalTests::voidSlot);
     signal.connect(std::move(connection));
     EXPECT_CALL(*m_mockPrinter, log("voidSlot"));
     EXPECT_EQ(1, signal());
@@ -185,7 +194,7 @@ TEST_F(SignalTests, connectToMethodSlot)
 TEST_F(SignalTests, connectToBaseSlot)
 {
     meta::Signal<void()> signal("voidSignal");
-    auto connection = std::make_unique<meta::Connection>(*this, &SignalTests::baseSlot);
+    auto connection = std::make_unique<meta::Slot>(*this, &SignalTests::baseSlot);
     signal.connect(std::move(connection));
     EXPECT_CALL(*m_mockPrinter, log("Base::baseSlot"));
     EXPECT_EQ(1, signal());
@@ -194,7 +203,7 @@ TEST_F(SignalTests, connectToBaseSlot)
 TEST_F(SignalTests, connectToOverridable)
 {
     meta::Signal<void()> signal("voidSignal");
-    auto connection = std::make_unique<meta::Connection>(*this, &SignalTests::overridable);
+    auto connection = std::make_unique<meta::Slot>(*this, &SignalTests::overridable);
     signal.connect(std::move(connection));
     EXPECT_CALL(*m_mockPrinter, log("Base::overridable"));
     EXPECT_CALL(*m_mockPrinter, log("SignalTests::overridable"));
@@ -204,7 +213,7 @@ TEST_F(SignalTests, connectToOverridable)
 TEST_F(SignalTests, connectToSelfDisconnectable)
 {
     meta::Signal<void()> signal("voidSignal");
-    auto connection = std::make_unique<meta::Connection>(*this, &SignalTests::selfDisconnect);
+    auto connection = std::make_unique<meta::Slot>(*this, &SignalTests::selfDisconnect);
     signal.connect(std::move(connection));
     EXPECT_CALL(*m_mockPrinter, log("selfDisconnect"));
     EXPECT_EQ(1, signal.getConnectionCount());
@@ -216,15 +225,59 @@ TEST_F(SignalTests, signalToSignal)
 {
     meta::Signal<void(std::string_view)> signal{"stringSignal"};
     meta::Signal<void()> slotSignal("slotSignal");
-    auto slot = [](meta::Connection* connection)
+    auto slot = [](meta::Slot* connection)
     {
         META_LOG_INFO("slot");
         connection->disconnect();
     };
-    auto connection = std::make_unique<meta::Connection>(slot);
+    auto connection = std::make_unique<meta::Slot>(slot);
     slotSignal.connect(std::move(connection));
-    auto signalConnection = std::make_unique<meta::Connection>(slotSignal, &meta::Signal<void()>::operator());
+    auto signalConnection = std::make_unique<meta::Slot>(slotSignal, &meta::Signal<void()>::operator());
     signal.connect(std::move(signalConnection));
     EXPECT_CALL(*m_mockPrinter, log("slot"));
+    EXPECT_EQ(1, signal("first"));
+}
+
+TEST_F(SignalTests, connectToFunction)
+{
+    meta::Signal<void(std::string_view)> signal{"stringSignal"};
+    signal.connect(stringFunction);
+    EXPECT_CALL(*m_mockPrinter, log("stringFunction first"));
+    EXPECT_EQ(1, signal("first"));
+}
+
+TEST_F(SignalTests, connectToLambda)
+{
+    meta::Signal<void(std::string_view)> signal{"stringSignal"};
+    auto lambda = [](std::string_view text)
+    {
+        META_LOG_INFO("lambda " << text);
+    };
+    signal.connect(std::move(lambda));
+    EXPECT_CALL(*m_mockPrinter, log("lambda first"));
+    EXPECT_EQ(1, signal("first"));
+}
+
+TEST_F(SignalTests, connectToMethod)
+{
+    meta::Signal<void(std::string_view)> signal{"stringSignal"};
+    signal.connect(*this, &SignalTests::stringSlot);
+    EXPECT_CALL(*m_mockPrinter, log("stringSlot first"));
+    EXPECT_EQ(1, signal("first"));
+}
+
+TEST_F(SignalTests, connectToSignal)
+{
+    using SlotSignal = meta::Signal<void()>;
+    SlotSignal slotSignal{"voidSignal"};
+    auto lambda = []()
+    {
+        META_LOG_INFO("lambda");
+    };
+    slotSignal.connect(lambda);
+
+    meta::Signal<void(std::string_view)> signal{"stringSignal"};
+    signal.connect(slotSignal, &SlotSignal::operator());
+    EXPECT_CALL(*m_mockPrinter, log("lambda"));
     EXPECT_EQ(1, signal("first"));
 }

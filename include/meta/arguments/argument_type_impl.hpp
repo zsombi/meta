@@ -52,20 +52,6 @@ ArgumentData::operator T() const
     return std::any_cast<T>(*this);
 }
 
-template <typename T>
-T ArgumentData::get() const noexcept
-{
-    try
-    {
-        return std::any_cast<T>(*this);
-    }
-    catch (std::bad_any_cast&)
-    {
-        META_LOG_ERROR("Bad cast of argument data. " << this->type().name());
-        return {};
-    }
-}
-
 
 template <typename... Arguments>
 PackagedArguments::PackagedArguments(Arguments&&... arguments)

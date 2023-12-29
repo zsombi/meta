@@ -20,15 +20,15 @@
 #define META_SIGNAL_PRIVATE_HPP
 
 #include <meta/signal/signal.hpp>
-#include <meta/signal/connection.hpp>
+#include <meta/signal/slot.hpp>
 
 namespace meta
 {
 
-struct ConnectionPrivate
+struct SlotPrivate
 {
-    static void attachToSignal(Connection& self, BaseSignal& signal);
-    static void detachFromSignal(Connection& self);
+    static void attachToSignal(Slot& self, CoreSignal& signal);
+    static void detachFromSignal(Slot& self);
 };
 
 }

@@ -22,17 +22,17 @@ namespace meta
 template<class Function>
 Callable::Callable(std::string_view name, Function function)
 {
-    auto invokable = [function](const PackagedArguments& arguments) -> ArgumentData
+    auto invokable = [f = std::move(function)](const PackagedArguments& arguments) -> ArgumentData
     {
         auto pack = arguments.toTuple<Function>();
         if constexpr (std::is_void_v<typename traits::function_traits<Function>::return_type>)
         {
-            std::apply(function, pack);
+            std::apply(f, pack);
             return ArgumentData();
         }
         else
         {
-            auto result = std::apply(function, pack);
+            auto result = std::apply(f, pack);
             return ArgumentData(result);
         }
     };
