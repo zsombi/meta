@@ -20,7 +20,7 @@
 #define CONTAINERS_ITERATOR_HPP
 
 #include <utils/type_traits.hpp>
-
+#include <cmath>
 
 namespace containers
 {
@@ -41,15 +41,19 @@ public:
     using reference         = typename Traits::Reference;
     using size_type         = typename Traits::SizeType;
 
+    /// Default constructor.
+    IteratorWrap() = default;
+
     /// Constructor. Initializes the iterator for a given position. Adjusts the iterator to point to
     /// the first valid element of the container, between the pos and end.
     /// \param pos The position of the iterator.
     /// \param end The end position of the iterator.
-    IteratorWrap(BaseIterator pos, BaseIterator end) :
+    IteratorWrap(BaseIterator pos, BaseIterator end, value_type invalidElement) :
         m_pos(pos),
-        m_end(end)
+        m_end(end),
+        m_invalidElement(invalidElement)
     {
-        while (m_pos != m_end && !m_traits.valid_element(*m_pos))
+        while (m_pos != m_end && !isValid(*m_pos))
         {
             ++m_pos;
         }
@@ -60,7 +64,7 @@ public:
     {
         while (++m_pos != m_end)
         {
-            if (m_traits.valid_element(*m_pos))
+            if (isValid(*m_pos))
             {
                 break;
             }
@@ -75,6 +79,19 @@ public:
         IteratorWrap retval = *this;
         ++(*this);
         return retval;
+    }
+
+    /// Advancing operator.
+    IteratorWrap& operator+=(difference_type distance)
+    {
+        if (distance > 0)
+        {
+            while (distance-- > 0)
+            {
+                ++(*this);
+            }
+        }
+        return *this;
     }
 
     /// Equality comparation operator.
@@ -114,9 +131,21 @@ public:
     }
 
 private:
-    Traits m_traits;
     BaseIterator m_pos;
     BaseIterator m_end;
+    value_type m_invalidElement = {};
+
+    bool isValid(const value_type& element) const
+    {
+        if constexpr (std::is_floating_point_v<value_type>)
+        {
+            return std::isnan(m_invalidElement) ? !std::isnan(element) : m_invalidElement != element;
+        }
+        else
+        {
+            return m_invalidElement != element;
+        }
+    }
 };
 
 }
